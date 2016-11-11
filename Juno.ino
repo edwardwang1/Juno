@@ -1,16 +1,26 @@
 #include <SoftwareSerial.h>
 #include <Servo.h>
+#include <NewPing.h>
 
 // Pin assignments for the Arduino, change this if you want to move the pins
 const int txPin = 12; //SoftwareSerial TX pin, connect to JY-MCU RX pin
 const int rxPin = 13; //SoftwareSerial RX pin, connect to JY-MCY TX pin
 SoftwareSerial bluetoothInput(rxPin, txPin); // RX, TX
 
+//Ping assignments for the sonar
+#define TRIGGER_PIN 2
+#define ECHO_PIN 1
+#define MAX_DISTANCE 200
+
 // Pin assignment and servo declarations
 Servo leftServo;
 Servo rightServo;
 int leftServoPin = 9;
 int rightServoPin = 8;
+
+// Timer variable assignments so that there's not delay involved
+unsigned long previousMillis = 0; 
+const long interval = 50;   //50 ms delay
 
 // LED pin assignments
 int ledEyeRight = 11;  // LED eye (right)
@@ -36,7 +46,7 @@ byte state[] = {90, 90};      //initializes the state variable that stores incom
 
 void setup() {
   bluetoothInput.begin(9600); // Sets rate of data transmission of Bluetooth module to 9600 bits/second. See https://www.arduino.cc/en/serial/begin for more details
-  Serial.begin(9600);         // Used to debug when plugged into computer via USB 
+  Serial.begin(115200);         // Setting up Serial monitor for Sonar
   //Initializing components
   leftServo.attach(leftServoPin); 
   rightServo.attach(rightServoPin);
@@ -62,18 +72,21 @@ void loop() {
     // if there is incoming data, read the first number
     bluetoothInput.readBytes(state, 1);
     // output the bluetoothInput to serial for testing
-    Serial.println(state[0]);
     //Checks to see where data is coming from and calls the corresponding code
     if (state[0] == 180){
       bluetoothInput.readBytes(state, 2);
       fromPhone(state[0], state[1]);
       // output the bluetoothInput to serial for testing
-      Serial.print(state[0]);
-      Serial.print("   ");
-      Serial.println(state[1]);
     }
     else{
        fromComputer(state[0]);     
+    }
+    if (currentMillis - previousMillis >= interval) { //if the interval (50 ms) has passed
+      // save the last time you checked sonar
+      previousMillis = currentMillis;
+      Serial.print("Ping: ");
+      Serial.print(sonar.ping_cm()); // Send ping, get distance in cm and print result (0 = outside set distance range)
+      Serial.println("cm");
     }
   }
 
